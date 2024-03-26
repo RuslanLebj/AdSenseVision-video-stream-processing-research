@@ -12,13 +12,16 @@ password = '228Froggit322'
 url = f'rtsp://{username}:{password}@{ip_address}/Streaming/Channels/1'
 
 # Подключение к Веб-камере
-# cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+#cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 # Путь к вашему файлу AVI
 video_path = 'output.avi'
 
+# Подключение к сохраненному видеопотоку
+cap = cv2.VideoCapture(video_path)
+
 # Подключение к IP-камере
-# cap = cv2.VideoCapture(video_path)
+# cap = cv2.VideoCapture(url)
 
 # Получение ширины и высоты видеопотока
 width = int(cap.get(3))
@@ -51,7 +54,7 @@ while True:
     if ret:
 
         # Сжатие изображения (уменьшение разрешения)
-        frame = cv2.resize(frame, (new_width, new_height))
+        # frame = cv2.resize(frame, (new_width, new_height))
 
         # Преобразование кадра в черно-белый формат (эффективнее для обнаружения лиц)
         grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

@@ -20,7 +20,6 @@ height = int(cap.get(4))
 fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Выберите кодек и параметры
 out = cv2.VideoWriter('output.avi', fourcc, 20.0, (width, height))  # 'output.avi' - имя выходного файла
 
-
 while True:
 
     # Считываем кадр из видеопотока

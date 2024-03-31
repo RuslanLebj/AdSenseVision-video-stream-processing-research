@@ -30,7 +30,6 @@ while True:
         print("Не удалось прочитать кадр")
         break
 
-
     # Создаем окно с поддержкой изменения размеров
     cv2.namedWindow('IP Camera: Detected Faces and Eyes', cv2.WINDOW_NORMAL)
 

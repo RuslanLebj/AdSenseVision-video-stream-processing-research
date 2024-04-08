@@ -13,7 +13,7 @@ password = '228Froggit322'
 url = f'rtsp://{username}:{password}@{ip_address}/Streaming/Channels/1'
 
 # Подключение к IP-камере
-cap = cv2.VideoCapture(url)
+# cap = cv2.VideoCapture(url)
 
 # Путь к вашему файлу AVI
 video_path = 'output.avi'
@@ -22,7 +22,7 @@ video_path = 'output.avi'
 # cap = cv2.VideoCapture(video_path)
 
 # Подключение к Веб-камере
-# cap = cv2.VideoCapture(cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(cv2.CAP_DSHOW)
 
 # Получаем FPS видеопотока
 fps_actual = cap.get(cv2.CAP_PROP_FPS)
@@ -33,7 +33,7 @@ fps_default = 20
 if fps_actual == 0:
     fps_actual = fps_default
 
-# Сколько кадров в секунду мы будем обрабатывать
+# Сколько кадров в секунду мы будем обрабатывать (указать fps_actual если все)
 fps_processing = 5
 
 # Вычисляем количество пропускаемых кадров между кадрами обработки
@@ -139,9 +139,6 @@ while cap.isOpened():
             gaze_direction_vertical = "Bottom"
 
         # Визуализация:
-        # Вывод направления
-        cv2.putText(frame, gaze_direction_vertical + " " + gaze_direction_horizontal, (50, 50),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
         # Получение координат контрольных точек и их построение на изображении
         landmarks = predictor(grayFrame, face)
@@ -168,6 +165,11 @@ while cap.isOpened():
         x2 = face.right()
         y2 = face.bottom()
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 1)
+
+        # Визуализация направления взгляда над рамкой найденного лица
+        text_y_position = y1 - 10  # Вычисляем позицию текста как 10 пикселей выше верхнего края рамки лица
+        cv2.putText(frame, gaze_direction_vertical + " " + gaze_direction_horizontal, (x1, text_y_position),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
     # Создаем окно с поддержкой изменения размеров
     cv2.namedWindow('IP Camera: Detected Faces and Eyes', cv2.WINDOW_NORMAL)

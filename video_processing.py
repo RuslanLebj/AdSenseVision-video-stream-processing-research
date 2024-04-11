@@ -4,6 +4,7 @@ import numpy as np
 import dlib
 import time
 
+
 # Замените следующие значения на данные вашей IP-камеры
 ip_address = '192.168.0.28'
 username = 'admin'
@@ -43,7 +44,7 @@ frame_skip = int(round(fps_actual / fps_processing))
 width = int(cap.get(3))
 height = int(cap.get(4))
 
-# Размеры нового разрешения (можете настроить по вашим требованиям)
+# Размеры до которых сжимаем изображение (можете настроить по вашим требованиям)
 new_width = 640
 new_height = 480
 
@@ -53,11 +54,21 @@ detector = dlib.get_frontal_face_detector()
 # Загрузка предварительно обученной модели для обнаружения ключевых точек лица
 predictor = dlib.shape_predictor("model/shape_predictor_68_face_landmarks.dat")
 
+# Положения головы, указывающие на заинтересованность человека
+horizontal_directions_trackable = ["Middle"]
+vertical_directions_trackable = ["Middle", "Top"]
+
+# Счетчик максимального числа зрителей за 1 показ
+max_viewers_per_show = 0
+
+# Счетчик общего времени просмотров за 1 показ
+total_view_time_per_show = 0
+# Время начала показа
+show_start_time = time.time()
 
 # Настройка объекта VideoWriter для записи в файл
 # fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Выберите кодек и параметры
 # out = cv2.VideoWriter('output_processed.avi', fourcc, 20.0, (width, height))  # 'output.avi' - имя выходного файла
-
 
 def draw_line(frame, a, b, color=(255, 255, 0)):
     cv2.line(frame, a, b, color, 10)
@@ -80,8 +91,14 @@ while cap.isOpened():
     # Обнаружение лиц
     faces = detector(grayFrame)
 
+    # Счетчик заинтересованных зрителей за этот показ
+    current_viewers = 0
+
     # Обход списка всех лиц попавших на изображение
     for face in faces:
+
+        is_viewer = False
+
         # Получение ключевых точек лица
         landmarks = predictor(grayFrame, face)
 
@@ -98,7 +115,7 @@ while cap.isOpened():
 
         # Задаем порог для определения направления взгляда в центр по горизонтали в виде % от ср. расстояния
         # *Это значение может потребоваться настроить в зависимости от конкретных условий
-        threshold_horizontal_coef = 0.3
+        threshold_horizontal_coef = 1
         threshold_horizontal = ((left_eye_distance + right_eye_distance) / 2) * threshold_horizontal_coef
 
         # Определение направления области взгляда по горизонтали
@@ -125,7 +142,7 @@ while cap.isOpened():
             np.array([landmarks.part(8).x, landmarks.part(8).y]) - np.array(
                 [landmarks.part(30).x, landmarks.part(30).y]))
 
-        # Задаем порог для определения направления взгляда в центр по горизонтали в виде % от ср. расстояния
+        # Задаем порог для определения направления взгляда в центр по вертикали в виде % от ср. расстояния
         # *Это значение может потребоваться настроить в зависимости от конкретных условий
         threshold_vertical_coef = 0.1
         threshold_vertical = ((forehead_nose_distance + chin_nose_distance) / 2) * threshold_vertical_coef
@@ -138,7 +155,31 @@ while cap.isOpened():
         else:
             gaze_direction_vertical = "Bottom"
 
-        # Визуализация:
+        # Проверка, заинтересован ли зритель (положение головы совпадает с отслеживаемым)
+        if gaze_direction_vertical in vertical_directions_trackable and gaze_direction_horizontal in horizontal_directions_trackable:
+            is_viewer = True
+            current_viewers += 1
+
+        # Обновление счетчиков
+        if current_viewers > max_viewers_per_show:
+            max_viewers_per_show = current_viewers
+
+        total_view_time_per_show += (current_viewers * (1 / fps_processing))
+
+        # ВИЗУАЛИЗАЦИЯ:
+        # Цвет текста направления положения головы
+        direction_text_color = (0, 0, 255)
+        if is_viewer:
+            # Изменение цвета в случае если зритель заинтеросован
+            direction_text_color = (0, 255, 0)
+
+        # Визуализация текста в верхнем левом углу о параметрах статистики
+        cv2.putText(frame, f"Current viewers: {current_viewers}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 255, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Max viewers: {max_viewers_per_show}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 255, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Total view time: {total_view_time_per_show:.2f} sec.", (10, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
         # Получение координат контрольных точек и их построение на изображении
         landmarks = predictor(grayFrame, face)
@@ -166,16 +207,26 @@ while cap.isOpened():
         y2 = face.bottom()
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 1)
 
-        # Визуализация направления взгляда над рамкой найденного лица
+        # Визуализация текста направления взгляда над рамкой найденного лица
         text_y_position = y1 - 10  # Вычисляем позицию текста как 10 пикселей выше верхнего края рамки лица
         cv2.putText(frame, gaze_direction_vertical + " " + gaze_direction_horizontal, (x1, text_y_position),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, direction_text_color, 2, cv2.LINE_AA)
+
+
+    # Визуализация текста в верхнем левом углу о параметрах статистики
+    cv2.putText(frame, f"Current viewers: {current_viewers}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                (0, 255, 0), 2, cv2.LINE_AA)
+    cv2.putText(frame, f"Max viewers: {max_viewers_per_show}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                (0, 255, 0), 2, cv2.LINE_AA)
+    cv2.putText(frame, f"Total view time: {total_view_time_per_show:.2f} sec.", (10, 90),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
     # Создаем окно с поддержкой изменения размеров
     cv2.namedWindow('IP Camera: Detected Faces and Eyes', cv2.WINDOW_NORMAL)
 
     # Отображение результата
     cv2.imshow('IP Camera: Detected Faces and Eyes', frame)
+    # КОНЕЦ ВИЗУАЛИЗАЦИИ
 
     # Запись кадра в видеофайл
     # out.write(frame)
@@ -188,6 +239,12 @@ while cap.isOpened():
     key = cv2.waitKey(1)
     if key == 27:
         break
+
+# Вывод итоговых результатов
+show_end_time = time.time()
+print(f"Максимальное количество зрителей за показ: {max_viewers_per_show}")
+print(f"Общее время просмотра за показ: {total_view_time_per_show} секунд")
+print(f"Продолжительность показа: {show_end_time - show_start_time} секунд")
 
 # Освобождаем ресурсы и закрываем окна
 cap.release()

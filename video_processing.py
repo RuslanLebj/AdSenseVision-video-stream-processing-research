@@ -70,6 +70,7 @@ show_start_time = time.time()
 # fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Выберите кодек и параметры
 # out = cv2.VideoWriter('output_processed.avi', fourcc, 20.0, (width, height))  # 'output.avi' - имя выходного файла
 
+
 def draw_line(frame, a, b, color=(255, 255, 0)):
     cv2.line(frame, a, b, color, 10)
 
@@ -147,10 +148,21 @@ while cap.isOpened():
         threshold_vertical_coef = 0.1
         threshold_vertical = ((forehead_nose_distance + chin_nose_distance) / 2) * threshold_vertical_coef
 
+        # Величина сдвига для облегчения обнаружения поворота головы по вертикали
+        vertical_shift = 0.2  # Примерное значение, потребуется настройка
+
+        # Применяем сдвиг к расстоянию между лобной точкой и точкой на кончике носа
+        # Это поможет легче обнаруживать поворот головы вниз
+        adjusted_forehead_nose_distance = forehead_nose_distance + (forehead_nose_distance * vertical_shift)
+
+        # Применяем сдвиг к расстоянию между точкой на подбородке и точкой на кончике носа
+        # Если требуется сделать обнаружение поворота головы вниз менее чувствительным, можно использовать вычитание
+        adjusted_chin_nose_distance = chin_nose_distance - (chin_nose_distance * vertical_shift)
+
         # Определение вертикального направления области взгляда
-        if abs(forehead_nose_distance - chin_nose_distance) < threshold_vertical:
+        if abs(adjusted_forehead_nose_distance - adjusted_chin_nose_distance) < threshold_vertical:
             gaze_direction_vertical = "Middle"
-        elif forehead_nose_distance < chin_nose_distance:
+        elif adjusted_forehead_nose_distance < adjusted_chin_nose_distance:
             gaze_direction_vertical = "Top"
         else:
             gaze_direction_vertical = "Bottom"

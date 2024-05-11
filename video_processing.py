@@ -14,7 +14,7 @@ password = '228Froggit322'
 url = f'rtsp://{username}:{password}@{ip_address}/Streaming/Channels/1'
 
 # Подключение к IP-камере
-# cap = cv2.VideoCapture(url)
+cap = cv2.VideoCapture(url)
 
 # Путь к вашему файлу AVI
 video_path = 'output.avi'
@@ -23,16 +23,17 @@ video_path = 'output.avi'
 # cap = cv2.VideoCapture(video_path)
 
 # Подключение к Веб-камере
-cap = cv2.VideoCapture(cv2.CAP_DSHOW)
+# cap = cv2.VideoCapture(cv2.CAP_DSHOW)
 
 # Получаем FPS видеопотока
 fps_actual = cap.get(cv2.CAP_PROP_FPS)
-print("FPS видеопотока:", fps_actual)
 
 # Если не удалось считать FPS, поставим по умолчнию
 fps_default = 20
 if fps_actual == 0:
     fps_actual = fps_default
+
+print("FPS видеопотока:", fps_actual)
 
 # Сколько кадров в секунду мы будем обрабатывать (указать fps_actual если все)
 fps_processing = 5
@@ -45,8 +46,8 @@ width = int(cap.get(3))
 height = int(cap.get(4))
 
 # Размеры до которых сжимаем изображение (можете настроить по вашим требованиям)
-new_width = 640
-new_height = 480
+new_width = 1280
+new_height = 960
 
 # Загрузка предварительно обученной модели Dlib для обнаружения лиц
 detector = dlib.get_frontal_face_detector()
@@ -67,8 +68,8 @@ total_view_time_per_show = 0
 show_start_time = time.time()
 
 # Настройка объекта VideoWriter для записи в файл
-# fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Выберите кодек и параметры
-# out = cv2.VideoWriter('output_processed.avi', fourcc, 20.0, (width, height))  # 'output.avi' - имя выходного файла
+fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Выберите кодек и параметры
+out = cv2.VideoWriter('output_processed.avi', fourcc, 20.0, (new_width, new_height))  # 'output.avi' - имя выходного файла
 
 
 def draw_line(frame, a, b, color=(255, 255, 0)):
@@ -151,6 +152,9 @@ while cap.isOpened():
         # Величина сдвига для облегчения обнаружения поворота головы по вертикали
         vertical_shift = 0.2  # Примерное значение, потребуется настройка
 
+        # Параметры adjusted_distance необходимы, т.к. расстояние между самой нижней точкой и центральной не
+        # равняется расстояние между самой верхней точкой и центральной, и нам необходимы корректировочные значения
+
         # Применяем сдвиг к расстоянию между лобной точкой и точкой на кончике носа
         # Это поможет легче обнаруживать поворот головы вниз
         adjusted_forehead_nose_distance = forehead_nose_distance + (forehead_nose_distance * vertical_shift)
@@ -185,14 +189,6 @@ while cap.isOpened():
             # Изменение цвета в случае если зритель заинтеросован
             direction_text_color = (0, 255, 0)
 
-        # Визуализация текста в верхнем левом углу о параметрах статистики
-        cv2.putText(frame, f"Current viewers: {current_viewers}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                    (0, 255, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Max viewers: {max_viewers_per_show}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                    (0, 255, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Total view time: {total_view_time_per_show:.2f} sec.", (10, 90),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
-
         # Получение координат контрольных точек и их построение на изображении
         landmarks = predictor(grayFrame, face)
         for n in range(0, 68):
@@ -226,12 +222,12 @@ while cap.isOpened():
 
 
     # Визуализация текста в верхнем левом углу о параметрах статистики
-    cv2.putText(frame, f"Current viewers: {current_viewers}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+    cv2.putText(frame, f"Current viewers: {current_viewers}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
                 (0, 255, 0), 2, cv2.LINE_AA)
-    cv2.putText(frame, f"Max viewers: {max_viewers_per_show}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+    cv2.putText(frame, f"Max viewers: {max_viewers_per_show}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1,
                 (0, 255, 0), 2, cv2.LINE_AA)
     cv2.putText(frame, f"Total view time: {total_view_time_per_show:.2f} sec.", (10, 90),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
     # Создаем окно с поддержкой изменения размеров
     cv2.namedWindow('IP Camera: Detected Faces and Eyes', cv2.WINDOW_NORMAL)

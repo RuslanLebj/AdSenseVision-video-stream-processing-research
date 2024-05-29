@@ -1,9 +1,10 @@
-# Импорт необходимых модулей
 import cv2
 import numpy as np
 import dlib
 import time
-
+import requests
+import threading
+from datetime import timedelta
 
 # Замените следующие значения на данные вашей IP-камеры
 ip_address = '192.168.0.28'
@@ -67,14 +68,52 @@ total_view_time_per_show = 0
 # Время начала показа
 show_start_time = time.time()
 
+
 # Настройка объекта VideoWriter для записи в файл
 # fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Выберите кодек и параметры
 # out = cv2.VideoWriter('output_processed.avi', fourcc, 20.0, (new_width, new_height))  # 'output.avi' - имя выходного файла
 
-
 def draw_line(frame, a, b, color=(255, 255, 0)):
     cv2.line(frame, a, b, color, 10)
 
+media_content_counter = 1
+
+def reset_and_send_statistics():
+    global max_viewers_per_show, total_view_time_per_show, show_start_time, media_content_counter
+
+    while True:
+        time.sleep(20)
+
+        # Собираем данные
+        viewing_time = str(timedelta(seconds=total_view_time_per_show))
+
+        data = {
+            "viewing_time": viewing_time,
+            "viewers_count": max_viewers_per_show,
+            "media_content": media_content_counter,
+            "screen": 1
+        }
+
+        # Отправляем POST-запрос
+        try:
+            response = requests.post("http://127.0.0.1:8000/api/statisticspershow/", json=data)
+            print(f"Статистика отправлена: {response.status_code}")
+        except Exception as e:
+            print(f"Ошибка при отправке данных: {e}")
+
+        # Сбрасываем статистику
+        max_viewers_per_show = 0
+        total_view_time_per_show = 0
+        show_start_time = time.time()
+
+        # Увеличиваем счетчик media_content
+        media_content_counter += 1
+        if media_content_counter > 6:
+            media_content_counter = 1
+
+
+# Запускаем поток для сброса и отправки статистики
+threading.Thread(target=reset_and_send_statistics, daemon=True).start()
 
 while cap.isOpened():
     # Считываем кадр из видеопотока
@@ -104,7 +143,7 @@ while cap.isOpened():
         # Получение ключевых точек лица
         landmarks = predictor(grayFrame, face)
 
-        # Горизотнальное направление:
+        # Горизонтальное направление:
         # Вычисление расстояния между крайней левой точкой лица и левым глазом (Евклидово расстояние)
         left_eye_distance = np.linalg.norm(
             np.array([landmarks.part(0).x, landmarks.part(0).y]) - np.array(
@@ -186,7 +225,7 @@ while cap.isOpened():
         # Цвет текста направления положения головы
         direction_text_color = (0, 0, 255)
         if is_viewer:
-            # Изменение цвета в случае если зритель заинтеросован
+            # Изменение цвета в случае если зритель заинтересован
             direction_text_color = (0, 255, 0)
 
         # Получение координат контрольных точек и их построение на изображении
@@ -219,7 +258,6 @@ while cap.isOpened():
         text_y_position = y1 - 10  # Вычисляем позицию текста как 10 пикселей выше верхнего края рамки лица
         cv2.putText(frame, gaze_direction_vertical + " " + gaze_direction_horizontal, (x1, text_y_position),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, direction_text_color, 2, cv2.LINE_AA)
-
 
     # Визуализация текста в верхнем левом углу о параметрах статистики
     cv2.putText(frame, f"Current viewers: {current_viewers}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
